@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF拆分工具</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF拆分工具</h1>
+        <form id="splitForm">
+            <div class="form-group">
+                <label for="file">选择PDF文件：</label>
+                <input type="file" id="file" accept=".pdf" required>
+            </div>
+            <div class="form-group">
+                <label for="start_page">起始页码：</label>
+                <input type="number" id="start_page" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="end_page">结束页码：</label>
+                <input type="number" id="end_page" min="1" required>
+            </div>
+            <button type="submit">拆分PDF</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
