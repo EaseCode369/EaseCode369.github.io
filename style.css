@@ -1,39 +1,95 @@
-.container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const dropZone = document.querySelector('.drop-zone');
+    const fileInput = document.getElementById('file');
+    const messageDiv = document.getElementById('message');
 
-.form-group {
-    margin-bottom: 15px;
-}
+    // 拖放功能
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
 
-label {
-    display: block;
-    margin-bottom: 5px;
-}
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
 
-input {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 10px;
-}
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('active');
+        });
+    });
 
-button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('active');
+        });
+    });
 
-button:hover {
-    background-color: #45a049;
-}
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInput.files = files;
+        updateFileName(files[0]);
+    });
 
-#message {
-    margin-top: 20px;
-    padding: 10px;
-    border-radius: 4px;
-} 
+    fileInput.addEventListener('change', (e) => {
+        updateFileName(e.target.files[0]);
+    });
+
+    function updateFileName(file) {
+        const dropZoneText = dropZone.querySelector('.drop-zone-text p');
+        if (file) {
+            dropZoneText.textContent = file.name;
+        }
+    }
+
+    // PDF拆分功能
+    document.getElementById('splitForm').onsubmit = async (e) => {
+        e.preventDefault();
+        messageDiv.className = '';
+        
+        try {
+            const file = fileInput.files[0];
+            const startPage = parseInt(document.getElementById('start_page').value);
+            const endPage = parseInt(document.getElementById('end_page').value);
+            
+            if (!file) {
+                throw new Error('请选择PDF文件');
+            }
+            
+            messageDiv.textContent = '正在处理...';
+            
+            const pdfBytes = await splitPDF(file, startPage, endPage);
+            
+            download(
+                new Blob([pdfBytes], { type: 'application/pdf' }), 
+                `split_${file.name}`, 
+                'application/pdf'
+            );
+            
+            messageDiv.textContent = '拆分成功！';
+            messageDiv.className = 'success';
+        } catch (error) {
+            messageDiv.textContent = `错误：${error.message}`;
+            messageDiv.className = 'error';
+        }
+    };
+});
+
+async function splitPDF(pdfFile, startPage, endPage) {
+    const arrayBuffer = await pdfFile.arrayBuffer();
+    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+    
+    const newPdfDoc = await PDFLib.PDFDocument.create();
+    
+    startPage = startPage - 1;
+    endPage = Math.min(endPage, pdfDoc.getPageCount());
+    
+    const pages = await newPdfDoc.copyPages(pdfDoc, Array.from(
+        {length: endPage - startPage}, (_, i) => i + startPage
+    ));
+    
+    pages.forEach(page => newPdfDoc.addPage(page));
+    
+    return await newPdfDoc.save();
+}
