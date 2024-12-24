@@ -1,22 +1,35 @@
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
-from pdf2docx import Converter
 import os
 from werkzeug.utils import secure_filename
 import logging
+import tempfile
+from pdf2docx import Converter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-# 配置 CORS，允许所有来源
+
+# 更新 CORS 配置
 CORS(app, resources={
     r"/*": {
-        "origins": ["https://easecode369.github.io", "http://localhost:8000"],
+        "origins": "*",  # 允许所有来源，生产环境中应该设置具体的域名
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Disposition"],
+        "supports_credentials": True
     }
 })
+
+# 添加 OPTIONS 请求处理
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
@@ -28,18 +41,14 @@ def pdf_to_word():
         return '', 204
     
     try:
-        logger.info('收到PDF转换请求')
         if 'file' not in request.files:
-            logger.error('没有文件在请求中')
             return jsonify({'error': '没有文件'}), 400
         
         file = request.files['file']
         if file.filename == '':
-            logger.error('文件名为空')
             return jsonify({'error': '没有选择文件'}), 400
 
         if not file.filename.endswith('.pdf'):
-            logger.error('不是PDF文件')
             return jsonify({'error': '请上传PDF文件'}), 400
 
         pdf_path = os.path.join(UPLOAD_FOLDER, secure_filename(file.filename))
@@ -87,4 +96,5 @@ def health_check():
 
 if __name__ == '__main__':
     logger.info('PDF转换服务启动在端口5000...')
+    # 允许外部访问
     app.run(host='0.0.0.0', port=5000, debug=True) 
