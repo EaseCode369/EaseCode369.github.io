@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 文件选择处理
     fileInput.addEventListener('change', (e) => {
+        // 阻止事件冒泡
+        e.stopPropagation();
+        
         if (e.target.files.length) {
             handleFileSelect(e.target.files[0]);
         }
@@ -55,16 +58,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // 拖放处理
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.classList.add('active');
     });
 
     dropZone.addEventListener('dragleave', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.classList.remove('active');
     });
 
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.classList.remove('active');
         
         const files = e.dataTransfer.files;
@@ -75,8 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 点击上传区域
-    dropZone.addEventListener('click', () => {
-        fileInput.click();
+    dropZone.addEventListener('click', (e) => {
+        // 阻止事件冒泡
+        e.stopPropagation();
+        
+        // 如果点击的是 input 元素，不需要再次触发点击
+        if (e.target !== fileInput) {
+            fileInput.click();
+        }
     });
 
     // 表单提交
