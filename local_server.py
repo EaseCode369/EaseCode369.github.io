@@ -1,7 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
-import requests
+import os
+from werkzeug.utils import secure_filename
 import logging
+import tempfile
+from pdf2docx import Converter
+from PyPDF2 import PdfReader, PdfWriter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,9 +32,8 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
 
-# 后端服务地址
-PDF2WORD_SERVICE = 'http://localhost:5001'
-PDF_SPLIT_SERVICE = 'http://localhost:5002'
+# 使用临时目录
+UPLOAD_FOLDER = tempfile.gettempdir()
 
 @app.route('/convert/pdf2word', methods=['POST', 'OPTIONS'])
 def pdf_to_word():
@@ -41,18 +44,46 @@ def pdf_to_word():
         if 'file' not in request.files:
             return jsonify({'error': '没有文件'}), 400
         
-        # 转发请求到PDF转Word服务
-        response = requests.post(
-            f'{PDF2WORD_SERVICE}/convert/pdf2word',
-            files={'file': request.files['file']}
-        )
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': '没有选择文件'}), 400
+
+        if not file.filename.endswith('.pdf'):
+            return jsonify({'error': '请上传PDF文件'}), 400
+
+        # 生成安全的文件名
+        pdf_filename = secure_filename(file.filename)
+        docx_filename = os.path.splitext(pdf_filename)[0] + '.docx'
         
-        return response.content, response.status_code, {
-            'Access-Control-Allow-Origin': 'https://easecode369.github.io',
-            'Access-Control-Allow-Credentials': 'true',
-            'Content-Type': response.headers.get('Content-Type'),
-            'Content-Disposition': response.headers.get('Content-Disposition')
-        }
+        pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
+        docx_path = os.path.join(UPLOAD_FOLDER, docx_filename)
+
+        logger.info(f'保存PDF文件到: {pdf_path}')
+        file.save(pdf_path)
+
+        try:
+            # 转换PDF到Word
+            cv = Converter(pdf_path)
+            cv.convert(docx_path)
+            cv.close()
+            logger.info(f'转换完成: {docx_path}')
+
+            return send_file(
+                docx_path,
+                as_attachment=True,
+                download_name=docx_filename,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            )
+
+        finally:
+            # 清理临时文件
+            try:
+                if os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+                if os.path.exists(docx_path):
+                    os.remove(docx_path)
+            except Exception as e:
+                logger.error(f'清理文件失败: {str(e)}')
 
     except Exception as e:
         logger.error(f'转换错误: {str(e)}')
@@ -67,22 +98,58 @@ def split_pdf():
         if 'file' not in request.files:
             return jsonify({'error': '没有文件'}), 400
         
-        # 转发请求到PDF拆分服务
-        response = requests.post(
-            f'{PDF_SPLIT_SERVICE}/split/pdf',
-            files={'file': request.files['file']},
-            data={
-                'start_page': request.form.get('start_page'),
-                'end_page': request.form.get('end_page')
-            }
-        )
+        file = request.files['file']
+        start_page = int(request.form.get('start_page', 1))
+        end_page = int(request.form.get('end_page', 1))
+
+        if file.filename == '':
+            return jsonify({'error': '没有选择文件'}), 400
+
+        if not file.filename.endswith('.pdf'):
+            return jsonify({'error': '请上传PDF文件'}), 400
+
+        # 生成安全的文件名
+        pdf_filename = secure_filename(file.filename)
+        output_filename = f"{os.path.splitext(pdf_filename)[0]}_p{start_page}-{end_page}.pdf"
         
-        return response.content, response.status_code, {
-            'Access-Control-Allow-Origin': 'https://easecode369.github.io',
-            'Access-Control-Allow-Credentials': 'true',
-            'Content-Type': response.headers.get('Content-Type'),
-            'Content-Disposition': response.headers.get('Content-Disposition')
-        }
+        pdf_path = os.path.join(UPLOAD_FOLDER, pdf_filename)
+        output_path = os.path.join(UPLOAD_FOLDER, output_filename)
+
+        try:
+            file.save(pdf_path)
+            logger.info(f'保存PDF文件到: {pdf_path}')
+
+            reader = PdfReader(pdf_path)
+            writer = PdfWriter()
+
+            total_pages = len(reader.pages)
+            if start_page < 1 or end_page > total_pages or start_page > end_page:
+                raise ValueError(f'无效的页码范围。文档共有 {total_pages} 页')
+
+            for page_num in range(start_page - 1, end_page):
+                writer.add_page(reader.pages[page_num])
+
+            with open(output_path, 'wb') as output_file:
+                writer.write(output_file)
+
+            logger.info(f'PDF拆分完成: {output_path}')
+
+            return send_file(
+                output_path,
+                as_attachment=True,
+                download_name=output_filename,
+                mimetype='application/pdf'
+            )
+
+        finally:
+            # 清理临时文件
+            try:
+                if os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+                if os.path.exists(output_path):
+                    os.remove(output_path)
+            except Exception as e:
+                logger.error(f'清理文件失败: {str(e)}')
 
     except Exception as e:
         logger.error(f'拆分错误: {str(e)}')
@@ -95,5 +162,5 @@ def health_check():
     return response
 
 if __name__ == '__main__':
-    logger.info('主服务器启动在端口5000...')
+    logger.info('服务启动在端口5000...')
     app.run(host='0.0.0.0', port=5000, debug=True) 
