@@ -1,10 +1,7 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
-from werkzeug.utils import secure_filename
-import logging
-import tempfile
 import requests
+import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,9 +28,8 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
 
-# PDF转Word服务地址
+# 后端服务地址
 PDF2WORD_SERVICE = 'http://localhost:5001'
-# PDF拆分服务地址
 PDF_SPLIT_SERVICE = 'http://localhost:5002'
 
 @app.route('/convert/pdf2word', methods=['POST', 'OPTIONS'])
@@ -47,16 +43,16 @@ def pdf_to_word():
         
         # 转发请求到PDF转Word服务
         response = requests.post(
-            f'{PDF2WORD_SERVICE}/convert',
+            f'{PDF2WORD_SERVICE}/convert/pdf2word',
             files={'file': request.files['file']}
         )
         
-        # 确保正确设置响应头
-        headers = {
+        return response.content, response.status_code, {
             'Access-Control-Allow-Origin': 'https://easecode369.github.io',
-            'Access-Control-Allow-Credentials': 'true'
+            'Access-Control-Allow-Credentials': 'true',
+            'Content-Type': response.headers.get('Content-Type'),
+            'Content-Disposition': response.headers.get('Content-Disposition')
         }
-        return response.content, response.status_code, headers
 
     except Exception as e:
         logger.error(f'转换错误: {str(e)}')
@@ -73,7 +69,7 @@ def split_pdf():
         
         # 转发请求到PDF拆分服务
         response = requests.post(
-            f'{PDF_SPLIT_SERVICE}/split',
+            f'{PDF_SPLIT_SERVICE}/split/pdf',
             files={'file': request.files['file']},
             data={
                 'start_page': request.form.get('start_page'),
@@ -81,18 +77,18 @@ def split_pdf():
             }
         )
         
-        # 确保正确设置响应头
-        headers = {
+        return response.content, response.status_code, {
             'Access-Control-Allow-Origin': 'https://easecode369.github.io',
-            'Access-Control-Allow-Credentials': 'true'
+            'Access-Control-Allow-Credentials': 'true',
+            'Content-Type': response.headers.get('Content-Type'),
+            'Content-Disposition': response.headers.get('Content-Disposition')
         }
-        return response.content, response.status_code, headers
 
     except Exception as e:
         logger.error(f'拆分错误: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-@app.route('/health', methods=['GET', 'OPTIONS'])
+@app.route('/health', methods=['GET'])
 def health_check():
     response = jsonify({'status': 'ok'})
     response.headers.add('Access-Control-Allow-Origin', 'https://easecode369.github.io')
@@ -100,5 +96,4 @@ def health_check():
 
 if __name__ == '__main__':
     logger.info('主服务器启动在端口5000...')
-    # 允许外部访问
     app.run(host='0.0.0.0', port=5000, debug=True) 
