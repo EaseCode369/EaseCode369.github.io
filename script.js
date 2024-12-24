@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const workspaceTitle = document.getElementById('workspaceTitle');
     const toolForm = document.getElementById('toolForm');
     const pdfSplitOptions = document.getElementById('pdfSplitOptions');
-    const dropZone = document.querySelector('.drop-zone');
+    const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('file');
     const messageDiv = document.getElementById('message');
 
@@ -21,6 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTool = toolCard.dataset.tool;
         toolsGrid.style.display = 'none';
         workspace.style.display = 'block';
+        
+        // 重置文件上传区域
+        const dropText = document.querySelector('.drop-zone-text p');
+        dropText.textContent = '拖放文件到这里，或者点击选择文件';
+        fileInput.value = '';
         
         // 根据工具类型设置界面
         switch (currentTool) {
@@ -44,45 +49,57 @@ document.addEventListener('DOMContentLoaded', () => {
         resetForm();
     });
 
-    // 拖放功能
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
+    // 点击上传
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
     });
 
-    function preventDefaults(e) {
+    // 文件选择变化
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+            updateDropZone(e.target.files[0]);
+        }
+    });
+
+    // 拖放处理
+    dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-    }
-
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            dropZone.classList.add('active');
-        });
+        dropZone.classList.add('active');
     });
 
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-            dropZone.classList.remove('active');
-        });
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('active');
     });
 
     dropZone.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        fileInput.files = files;
-        updateFileName(files[0]);
-    });
-
-    fileInput.addEventListener('change', (e) => {
-        updateFileName(e.target.files[0]);
-    });
-
-    function updateFileName(file) {
-        const dropZoneText = dropZone.querySelector('.drop-zone-text p');
-        if (file) {
-            dropZoneText.textContent = file.name;
+        e.preventDefault();
+        dropZone.classList.remove('active');
+        
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            fileInput.files = files;
+            updateDropZone(files[0]);
         }
+    });
+
+    // 更新拖放区域显示
+    function updateDropZone(file) {
+        if (file.type !== 'application/pdf') {
+            dropText.textContent = '请选择 PDF 文件';
+            fileInput.value = '';
+            return;
+        }
+        dropText.textContent = `已选择: ${file.name}`;
     }
+
+    // 防止默认拖放行为
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        document.body.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
 
     // 表单提交处理
     toolForm.onsubmit = async (e) => {
