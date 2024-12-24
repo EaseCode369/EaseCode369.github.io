@@ -102,34 +102,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 表单提交处理
-    toolForm.onsubmit = async (e) => {
-        e.preventDefault();
-        messageDiv.className = '';
-        messageDiv.style.display = 'none';
+    toolForm.addEventListener('submit', async function(e) {
+        e.preventDefault(); // 阻止表单默认提交
         
-        try {
-            const file = fileInput.files[0];
-            if (!file) {
-                throw new Error('请选择文件');
-            }
+        const file = document.getElementById('file').files[0];
+        if (!file) {
+            showError('请选择文件');
+            return;
+        }
 
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            showError('请上传PDF文件');
+            return;
+        }
+
+        try {
             messageDiv.textContent = '正在处理...';
             messageDiv.className = 'info';
             messageDiv.style.display = 'block';
 
-            switch (currentTool) {
-                case 'pdf2word':
-                    await handlePdfToWord(file);
-                    break;
-                case 'pdfsplit':
-                    await handlePdfSplit(file);
-                    break;
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('http://localhost:5000/convert/pdf2word', {
+                method: 'POST',
+                body: formData,
+                mode: 'cors',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '转换失败');
             }
-            
+
+            const blob = await response.blob();
+            download(blob, file.name.replace('.pdf', '.docx'));
+            showSuccess('转换成功！');
         } catch (error) {
+            console.error('转换错误:', error);
             showError(error.message);
         }
-    };
+    });
 
     async function handlePdfToWord(file) {
         try {
