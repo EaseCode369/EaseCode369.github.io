@@ -104,12 +104,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleFiles(files) {
         const file = files[0];
+        if (!file) return;
+        
         if (file.type !== 'application/pdf') {
             showError('请选择 PDF 文件');
             resetForm();
             return;
         }
-        dropText.textContent = `已选择: ${file.name}`;
+        
+        // 立即更新显示的文件名
+        const dropText = document.querySelector('.drop-zone-text p');
+        if (dropText) {
+            dropText.textContent = `已选择: ${file.name}`;
+            // 添加一个选中状态的类
+            dropZone.classList.add('has-file');
+        }
     }
 
     // 表单提交处理
