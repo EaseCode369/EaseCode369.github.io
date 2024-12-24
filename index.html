@@ -46,11 +46,16 @@
             
             <div class="workspace-content">
                 <form id="toolForm">
-                    <div class="drop-zone">
-                        <input type="file" id="file" accept=".pdf" required>
+                    <!-- 文件上传区域 -->
+                    <div class="drop-zone" id="dropZone">
+                        <input type="file" id="file" accept=".pdf" class="file-input">
                         <div class="drop-zone-text">
-                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'%3E%3C/path%3E%3Cpolyline points='7 10 12 15 17 10'%3E%3C/polyline%3E%3Cline x1='12' y1='15' x2='12' y2='3'%3E%3C/line%3E%3C/svg%3E" alt="upload">
-                            <p>拖放文件到这里，或者选择导入文件</p>
+                            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <p>拖放文件到这里，或者点击选择文件</p>
                         </div>
                     </div>
 
