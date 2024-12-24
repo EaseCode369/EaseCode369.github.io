@@ -1,3 +1,5 @@
+const SERVER_URL = 'http://localhost:5000';
+
 document.addEventListener('DOMContentLoaded', () => {
     const toolsGrid = document.querySelector('.tools-grid');
     const workspace = document.getElementById('workspace');
@@ -121,9 +123,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch('http://localhost:5000/convert/pdf2word', {
+            const response = await fetch(`${SERVER_URL}/convert/pdf2word`, {
                 method: 'POST',
-                body: formData
+                body: formData,
+                mode: 'cors',
+                credentials: 'omit'
             });
 
             if (!response.ok) {
@@ -198,7 +202,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 检查后端服务是否可用
     async function checkServerStatus() {
         try {
-            const response = await fetch('http://localhost:5000/health');
+            const response = await fetch(`${SERVER_URL}/health`, {
+                mode: 'cors',
+                credentials: 'omit'
+            });
             return response.ok;
         } catch {
             return false;
