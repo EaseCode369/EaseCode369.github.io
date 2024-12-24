@@ -1,7 +1,46 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const toolsGrid = document.querySelector('.tools-grid');
+    const workspace = document.getElementById('workspace');
+    const backBtn = document.getElementById('backBtn');
+    const workspaceTitle = document.getElementById('workspaceTitle');
+    const toolForm = document.getElementById('toolForm');
+    const pdfSplitOptions = document.getElementById('pdfSplitOptions');
     const dropZone = document.querySelector('.drop-zone');
     const fileInput = document.getElementById('file');
     const messageDiv = document.getElementById('message');
+
+    let currentTool = '';
+
+    // 工具卡片点击事件
+    toolsGrid.addEventListener('click', (e) => {
+        const toolCard = e.target.closest('.tool-card');
+        if (!toolCard) return;
+
+        currentTool = toolCard.dataset.tool;
+        toolsGrid.style.display = 'none';
+        workspace.style.display = 'block';
+        
+        // 根据工具类型设置界面
+        switch (currentTool) {
+            case 'pdf2word':
+                workspaceTitle.textContent = 'PDF转Word';
+                pdfSplitOptions.style.display = 'none';
+                fileInput.accept = '.pdf';
+                break;
+            case 'pdfsplit':
+                workspaceTitle.textContent = 'PDF拆分';
+                pdfSplitOptions.style.display = 'block';
+                fileInput.accept = '.pdf';
+                break;
+        }
+    });
+
+    // 返回按钮
+    backBtn.addEventListener('click', () => {
+        workspace.style.display = 'none';
+        toolsGrid.style.display = 'grid';
+        resetForm();
+    });
 
     // 拖放功能
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -43,53 +82,91 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // PDF拆分功能
-    document.getElementById('splitForm').onsubmit = async (e) => {
+    // 表单提交处理
+    toolForm.onsubmit = async (e) => {
         e.preventDefault();
         messageDiv.className = '';
+        messageDiv.style.display = 'none';
         
         try {
             const file = fileInput.files[0];
-            const startPage = parseInt(document.getElementById('start_page').value);
-            const endPage = parseInt(document.getElementById('end_page').value);
-            
             if (!file) {
-                throw new Error('请选择PDF文件');
+                throw new Error('请选择文件');
+            }
+
+            messageDiv.textContent = '正在处理...';
+            messageDiv.className = 'info';
+            messageDiv.style.display = 'block';
+
+            switch (currentTool) {
+                case 'pdf2word':
+                    await handlePdfToWord(file);
+                    break;
+                case 'pdfsplit':
+                    await handlePdfSplit(file);
+                    break;
             }
             
-            messageDiv.textContent = '正在处理...';
-            
-            const pdfBytes = await splitPDF(file, startPage, endPage);
-            
-            download(
-                new Blob([pdfBytes], { type: 'application/pdf' }), 
-                `split_${file.name}`, 
-                'application/pdf'
-            );
-            
-            messageDiv.textContent = '拆分成功！';
-            messageDiv.className = 'success';
         } catch (error) {
-            messageDiv.textContent = `错误：${error.message}`;
-            messageDiv.className = 'error';
+            showError(error.message);
         }
     };
-});
 
-async function splitPDF(pdfFile, startPage, endPage) {
-    const arrayBuffer = await pdfFile.arrayBuffer();
-    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
-    
-    const newPdfDoc = await PDFLib.PDFDocument.create();
-    
-    startPage = startPage - 1;
-    endPage = Math.min(endPage, pdfDoc.getPageCount());
-    
-    const pages = await newPdfDoc.copyPages(pdfDoc, Array.from(
-        {length: endPage - startPage}, (_, i) => i + startPage
-    ));
-    
-    pages.forEach(page => newPdfDoc.addPage(page));
-    
-    return await newPdfDoc.save();
-}
+    async function handlePdfToWord(file) {
+        // 这里添加PDF转Word的逻辑
+        // 由于浏览器端无法直接转换为Word格式，
+        // 这里可以考虑调用在线转换API或提示用户使用服务器端转换
+        showError('PDF转Word功能需要后端服务支持，请联系管理员');
+    }
+
+    async function handlePdfSplit(file) {
+        const startPage = parseInt(document.getElementById('start_page').value);
+        const endPage = parseInt(document.getElementById('end_page').value);
+        
+        const pdfBytes = await splitPDF(file, startPage, endPage);
+        
+        download(
+            new Blob([pdfBytes], { type: 'application/pdf' }), 
+            `split_${file.name}`, 
+            'application/pdf'
+        );
+        
+        showSuccess('拆分成功！');
+    }
+
+    async function splitPDF(pdfFile, startPage, endPage) {
+        const arrayBuffer = await pdfFile.arrayBuffer();
+        const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+        
+        const newPdfDoc = await PDFLib.PDFDocument.create();
+        
+        startPage = startPage - 1;
+        endPage = Math.min(endPage, pdfDoc.getPageCount());
+        
+        const pages = await newPdfDoc.copyPages(pdfDoc, Array.from(
+            {length: endPage - startPage}, (_, i) => i + startPage
+        ));
+        
+        pages.forEach(page => newPdfDoc.addPage(page));
+        
+        return await newPdfDoc.save();
+    }
+
+    function showSuccess(message) {
+        messageDiv.textContent = message;
+        messageDiv.className = 'success';
+        messageDiv.style.display = 'block';
+    }
+
+    function showError(message) {
+        messageDiv.textContent = `错误：${message}`;
+        messageDiv.className = 'error';
+        messageDiv.style.display = 'block';
+    }
+
+    function resetForm() {
+        toolForm.reset();
+        messageDiv.style.display = 'none';
+        dropZone.querySelector('.drop-zone-text p').textContent = '拖放文件到这里，或者选择导入文件';
+    }
+}); 
