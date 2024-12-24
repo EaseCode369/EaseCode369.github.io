@@ -147,23 +147,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function handlePdfToWord(file) {
-        const formData = new FormData();
-        formData.append('file', file);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
 
-        const response = await fetch('http://localhost:5000/convert/pdf2word', {
-            method: 'POST',
-            body: formData,
-            mode: 'cors',
-        });
+            const response = await fetch('http://localhost:5000/convert/pdf2word', {
+                method: 'POST',
+                body: formData,
+                mode: 'cors',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                }
+            });
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || '转换失败');
+            if (!response.ok) {
+                if (response.status === 0) {
+                    throw new Error('无法连接到服务器，请确保服务器正在运行');
+                }
+                const error = await response.json();
+                throw new Error(error.error || '转换失败');
+            }
+
+            const blob = await response.blob();
+            download(blob, file.name.replace('.pdf', '.docx'));
+            showSuccess('转换成功！');
+        } catch (error) {
+            console.error('转换错误:', error);
+            showError(error.message);
         }
-
-        const blob = await response.blob();
-        download(blob, file.name.replace('.pdf', '.docx'));
-        showSuccess('转换成功！');
     }
 
     function showError(message) {
@@ -195,6 +207,28 @@ document.addEventListener('DOMContentLoaded', () => {
         window.URL.revokeObjectURL(url);
         a.remove();
     }
+
+    // 添加健康检查函数
+    async function checkServerHealth() {
+        try {
+            const response = await fetch('http://localhost:5000/health', {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'include'
+            });
+            return response.ok;
+        } catch {
+            return false;
+        }
+    }
+
+    // 在页面加载时检查服务器状态
+    document.addEventListener('DOMContentLoaded', async () => {
+        const serverStatus = await checkServerHealth();
+        if (!serverStatus) {
+            showError('无法连接到转换服务器，请确保服务器已启动');
+        }
+    });
 
     // 初始化文件上传
     initFileUpload();
