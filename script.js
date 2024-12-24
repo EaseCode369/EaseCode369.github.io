@@ -6,11 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const toolForm = document.getElementById('toolForm');
     const pdfSplitOptions = document.getElementById('pdfSplitOptions');
     const messageDiv = document.getElementById('message');
-    
-    // 文件上传相关元素
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('file');
-    const dropText = dropZone.querySelector('.drop-zone-text p');
 
     let currentTool = '';
 
@@ -22,86 +19,64 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTool = toolCard.dataset.tool;
         toolsGrid.style.display = 'none';
         workspace.style.display = 'block';
-        
-        // 重置文件上传区域
-        resetForm();
-        
-        // 根据工具类型设置界面
-        switch (currentTool) {
-            case 'pdf2word':
-                workspaceTitle.textContent = 'PDF转Word';
-                pdfSplitOptions.style.display = 'none';
-                break;
-            case 'pdfsplit':
-                workspaceTitle.textContent = 'PDF拆分';
-                pdfSplitOptions.style.display = 'block';
-                break;
+        workspaceTitle.textContent = toolCard.querySelector('h3').textContent;
+
+        // 根据工具显示相应的选项
+        if (currentTool === 'pdf-split') {
+            pdfSplitOptions.style.display = 'block';
+        } else {
+            pdfSplitOptions.style.display = 'none';
         }
+
+        resetForm();
     });
 
-    // 返回按钮
+    // 返回按钮点击事件
     backBtn.addEventListener('click', () => {
         workspace.style.display = 'none';
         toolsGrid.style.display = 'grid';
         resetForm();
     });
 
-    // 文件上传相关事件处理
-    function initFileUpload() {
-        // 阻止默认拖放行为
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            document.body.addEventListener(eventName, preventDefaults, false);
-            dropZone.addEventListener(eventName, preventDefaults, false);
-        });
-
-        // 拖放状态处理
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, highlight, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, unhighlight, false);
-        });
-
-        // 处理文件拖放
-        dropZone.addEventListener('drop', handleDrop, false);
-
-        // 处理文件选择
-        fileInput.addEventListener('change', handleFileSelect, false);
-
-        // 点击上传区域
-        const uploadTrigger = dropZone.querySelector('.drop-zone-text');
-        uploadTrigger.addEventListener('click', () => fileInput.click(), false);
-    }
-
-    function preventDefaults(e) {
+    // 文件拖放处理
+    dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-    }
+        dropZone.classList.add('dragover');
+    });
 
-    function highlight(e) {
-        dropZone.classList.add('active');
-    }
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
 
-    function unhighlight(e) {
-        dropZone.classList.remove('active');
-    }
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        handleFiles(files);
+    });
 
-    function handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        if (files.length) {
-            handleFiles(files);
+    // 文件选择处理
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    // 表单提交处理
+    toolForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const file = fileInput.files[0];
+        if (!file) {
+            showError('请选择文件');
+            return;
         }
-    }
 
-    function handleFileSelect(e) {
-        const files = e.target.files;
-        if (files.length) {
-            handleFiles(files);
+        if (currentTool === 'pdf-split') {
+            await handlePdfSplit(file);
+        } else {
+            await handlePdfToWord(file);
         }
-    }
+    });
 
+    // 处理文件选择
     function handleFiles(files) {
         const file = files[0];
         if (!file) return;
@@ -112,40 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // 立即更新显示的文件名
-        const dropText = document.querySelector('.drop-zone-text p');
-        if (dropText) {
-            dropText.textContent = `已选择: ${file.name}`;
-            // 添加一个选中状态的类
-            dropZone.classList.add('has-file');
-        }
+        const dropText = dropZone.querySelector('.drop-zone-text p');
+        dropText.textContent = `已选择: ${file.name}`;
+        fileInput.files = files;
     }
 
-    // 表单提交处理
-    toolForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const file = fileInput.files[0];
-        if (!file) {
-            showError('请选择文件');
-            return;
-        }
-
-        try {
-            messageDiv.textContent = '正在处理...';
-            messageDiv.className = 'info';
-            messageDiv.style.display = 'block';
-
-            if (currentTool === 'pdf2word') {
-                await handlePdfToWord(file);
-            } else if (currentTool === 'pdfsplit') {
-                await handlePdfSplit(file);
-            }
-        } catch (error) {
-            showError(error.message);
-        }
-    });
-
+    // 处理PDF转Word
     async function handlePdfToWord(file) {
         try {
             const formData = new FormData();
@@ -153,18 +100,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const response = await fetch('http://localhost:5000/convert/pdf2word', {
                 method: 'POST',
-                body: formData,
-                mode: 'cors',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                }
+                body: formData
             });
 
             if (!response.ok) {
-                if (response.status === 0) {
-                    throw new Error('无法连接到服务器，请确保服务器正在运行');
-                }
                 const error = await response.json();
                 throw new Error(error.error || '转换失败');
             }
@@ -178,24 +117,60 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 处理PDF拆分
+    async function handlePdfSplit(file) {
+        try {
+            const startPage = document.getElementById('startPage').value;
+            const endPage = document.getElementById('endPage').value;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('start_page', startPage);
+            formData.append('end_page', endPage);
+
+            const response = await fetch('http://localhost:5000/split/pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '拆分失败');
+            }
+
+            const blob = await response.blob();
+            const filename = file.name.replace('.pdf', `_p${startPage}-${endPage}.pdf`);
+            download(blob, filename);
+            showSuccess('拆分成功！');
+        } catch (error) {
+            console.error('拆分错误:', error);
+            showError(error.message);
+        }
+    }
+
+    // 显示错误信息
     function showError(message) {
         messageDiv.textContent = `错误：${message}`;
-        messageDiv.className = 'error';
         messageDiv.style.display = 'block';
+        messageDiv.className = 'message error';
     }
 
+    // 显示成功信息
     function showSuccess(message) {
         messageDiv.textContent = message;
-        messageDiv.className = 'success';
         messageDiv.style.display = 'block';
+        messageDiv.className = 'message success';
     }
 
+    // 重置表单
     function resetForm() {
         toolForm.reset();
         messageDiv.style.display = 'none';
+        const dropText = dropZone.querySelector('.drop-zone-text p');
         dropText.textContent = '拖放文件到这里，或者点击选择文件';
     }
 
+    // 下载文件
     function download(blob, filename) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -207,29 +182,4 @@ document.addEventListener('DOMContentLoaded', () => {
         window.URL.revokeObjectURL(url);
         a.remove();
     }
-
-    // 添加健康检查函数
-    async function checkServerHealth() {
-        try {
-            const response = await fetch('http://localhost:5000/health', {
-                method: 'GET',
-                mode: 'cors',
-                credentials: 'include'
-            });
-            return response.ok;
-        } catch {
-            return false;
-        }
-    }
-
-    // 在页面加载时检查服务器状态
-    document.addEventListener('DOMContentLoaded', async () => {
-        const serverStatus = await checkServerHealth();
-        if (!serverStatus) {
-            showError('无法连接到转换服务器，请确保服务器已启动');
-        }
-    });
-
-    // 初始化文件上传
-    initFileUpload();
 }); 
