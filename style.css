@@ -27,10 +27,6 @@ header h1 {
     margin-bottom: 10px;
 }
 
-header h1 span {
-    color: #00b0ff;
-}
-
 .subtitle {
     color: #666;
     font-size: 16px;
@@ -38,101 +34,47 @@ header h1 span {
 
 .tools-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
     margin-bottom: 40px;
 }
 
 .tool-card {
     background: white;
-    border-radius: 16px;
-    padding: 25px;
-    position: relative;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
 }
 
 .tool-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
 }
 
 .tool-tag {
-    position: absolute;
-    top: 15px;
-    left: 15px;
+    display: inline-block;
+    padding: 4px 8px;
     background: #e3f2fd;
     color: #1976d2;
-    padding: 4px 8px;
     border-radius: 4px;
-    font-size: 12px;
-}
-
-.tool-card h2 {
-    margin: 25px 0 10px;
-    font-size: 24px;
-}
-
-.tool-card p {
-    color: #666;
-    margin-bottom: 20px;
-}
-
-.tool-icon {
-    position: absolute;
-    right: 20px;
-    bottom: 20px;
-}
-
-.tool-icon img {
-    width: 40px;
-    height: 40px;
-}
-
-.tool-workspace {
-    background: white;
-    border-radius: 16px;
-    padding: 30px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    display: none;
-}
-
-.workspace-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 30px;
-}
-
-.back-btn {
-    background: none;
-    border: none;
-    color: #666;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    font-size: 16px;
-    margin-right: 20px;
-}
-
-.back-btn:before {
-    content: "←";
-    margin-right: 8px;
+    font-size: 14px;
+    margin-bottom: 10px;
 }
 
 .drop-zone {
     position: relative;
     width: 100%;
     min-height: 200px;
-    border: 2px dashed #e0e0e0;
-    border-radius: 12px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: #f8f9fa;
-    transition: all 0.3s ease;
-    cursor: pointer;
     margin-bottom: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .drop-zone:hover {
@@ -147,81 +89,42 @@ header h1 span {
 
 .file-input {
     position: absolute;
+    left: 0;
+    top: 0;
     width: 100%;
     height: 100%;
-    top: 0;
-    left: 0;
     opacity: 0;
     cursor: pointer;
+    z-index: 1;
 }
 
 .drop-zone-text {
     text-align: center;
-    color: #666;
     pointer-events: none;
 }
 
-.drop-zone-text svg {
-    display: block;
-    margin: 0 auto 10px;
-    stroke: #666;
+.drop-zone-text img {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 10px;
 }
 
 .drop-zone-text p {
     margin: 0;
-    font-size: 16px;
-}
-
-.tool-options {
-    margin-bottom: 25px;
-}
-
-.page-inputs {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-}
-
-.input-group {
-    position: relative;
-    width: 120px;
-}
-
-.input-group input {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 16px;
-    transition: all 0.3s ease;
-}
-
-.input-group input:focus {
-    border-color: #00b0ff;
-    outline: none;
-}
-
-.input-group label {
-    position: absolute;
-    top: -10px;
-    left: 10px;
-    background: white;
-    padding: 0 5px;
-    font-size: 14px;
     color: #666;
+    font-size: 16px;
 }
 
 .submit-btn {
     width: 100%;
-    padding: 15px;
+    padding: 12px;
     background: #00b0ff;
     color: white;
     border: none;
     border-radius: 8px;
     font-size: 16px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background 0.3s;
 }
 
 .submit-btn:hover {
@@ -230,42 +133,23 @@ header h1 span {
 
 #message {
     margin-top: 20px;
-    text-align: center;
     padding: 12px;
     border-radius: 8px;
+    text-align: center;
     display: none;
 }
 
 #message.success {
-    display: block;
     background: #e8f5e9;
     color: #2e7d32;
 }
 
 #message.error {
-    display: block;
     background: #fbe9e7;
     color: #d32f2f;
 }
 
-@media (max-width: 768px) {
-    .container {
-        padding: 20px;
-    }
-    
-    .tools-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .page-inputs {
-        flex-direction: column;
-    }
-    
-    .input-group {
-        width: 100%;
-    }
-    
-    .tool-workspace {
-        padding: 20px;
-    }
+#message.info {
+    background: #e3f2fd;
+    color: #1976d2;
 } 
