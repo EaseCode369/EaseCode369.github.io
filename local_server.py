@@ -28,14 +28,18 @@ def pdf_to_word():
         return '', 204
     
     try:
+        logger.info('收到PDF转换请求')
         if 'file' not in request.files:
+            logger.error('没有文件在请求中')
             return jsonify({'error': '没有文件'}), 400
         
         file = request.files['file']
         if file.filename == '':
+            logger.error('文件名为空')
             return jsonify({'error': '没有选择文件'}), 400
 
         if not file.filename.endswith('.pdf'):
+            logger.error('不是PDF文件')
             return jsonify({'error': '请上传PDF文件'}), 400
 
         pdf_path = os.path.join(UPLOAD_FOLDER, secure_filename(file.filename))
