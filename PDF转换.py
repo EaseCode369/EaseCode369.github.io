@@ -1,69 +1,86 @@
-from flask import Flask, render_template, request, send_file
-from PyPDF2 import PdfReader, PdfWriter
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
+from pdf2docx import Converter
 import os
 from werkzeug.utils import secure_filename
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
+# 配置 CORS，允许所有来源
+CORS(app, resources={
+    r"/*": {
+        "origins": ["https://easecode369.github.io", "http://localhost:8000"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
-# 确保上传文件夹存在
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/split', methods=['POST'])
-def split_pdf():
-    if 'file' not in request.files:
-        return '没有选择文件', 400
+@app.route('/convert/pdf2word', methods=['POST', 'OPTIONS'])
+def pdf_to_word():
+    if request.method == 'OPTIONS':
+        return '', 204
     
-    file = request.files['file']
-    if file.filename == '':
-        return '没有选择文件', 400
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': '没有文件'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': '没有选择文件'}), 400
 
-    if not file.filename.endswith('.pdf'):
-        return '请上传PDF文件', 400
+        if not file.filename.endswith('.pdf'):
+            return jsonify({'error': '请上传PDF文件'}), 400
 
-    # 获取页面范围
-    start_page = int(request.form.get('start_page', 1))
-    end_page = int(request.form.get('end_page', 1))
+        pdf_path = os.path.join(UPLOAD_FOLDER, secure_filename(file.filename))
+        file.save(pdf_path)
+        logger.info(f'PDF文件已保存: {pdf_path}')
 
-    # 保存上传的文件
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
+        docx_path = pdf_path.replace('.pdf', '.docx')
 
-    # 处理PDF
-    pdf_reader = PdfReader(filepath)
-    pdf_writer = PdfWriter()
+        cv = Converter(pdf_path)
+        cv.convert(docx_path)
+        cv.close()
+        logger.info(f'转换完成: {docx_path}')
 
-    # 验证页面范围
-    if start_page < 1 or end_page > len(pdf_reader.pages):
-        os.remove(filepath)
-        return '页面范围无效', 400
+        os.remove(pdf_path)
 
-    # 添加选定的页面
-    for page_num in range(start_page - 1, end_page):
-        pdf_writer.add_page(pdf_reader.pages[page_num])
+        response = send_file(
+            docx_path,
+            as_attachment=True,
+            download_name=os.path.basename(docx_path)
+        )
 
-    # 保存新的PDF
-    output_filename = f'split_{filename}'
-    output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
-    
-    with open(output_filepath, 'wb') as output_file:
-        pdf_writer.write(output_file)
+        # 添加必要的跨域头
+        response.headers.add('Access-Control-Allow-Origin', 'https://easecode369.github.io')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response
 
-    # 删除原始文件
-    os.remove(filepath)
+    except Exception as e:
+        logger.error(f'转换错误: {str(e)}')
+        return jsonify({'error': str(e)}), 500
 
-    # 发送拆分后的文件
-    return send_file(
-        output_filepath,
-        as_attachment=True,
-        download_name=output_filename
-    )
+    finally:
+        if 'docx_path' in locals() and os.path.exists(docx_path):
+            try:
+                os.remove(docx_path)
+                logger.info(f'清理文件: {docx_path}')
+            except:
+                pass
+
+@app.route('/health', methods=['GET', 'OPTIONS'])
+def health_check():
+    response = jsonify({'status': 'ok'})
+    response.headers.add('Access-Control-Allow-Origin', 'https://easecode369.github.io')
+    return response
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    logger.info('PDF转换服务启动在端口5000...')
+    app.run(host='0.0.0.0', port=5000, debug=True) 
