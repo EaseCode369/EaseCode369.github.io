@@ -5,9 +5,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const workspaceTitle = document.getElementById('workspaceTitle');
     const toolForm = document.getElementById('toolForm');
     const pdfSplitOptions = document.getElementById('pdfSplitOptions');
+    const messageDiv = document.getElementById('message');
+    
+    // 文件上传相关元素
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('file');
-    const messageDiv = document.getElementById('message');
     const dropText = dropZone.querySelector('.drop-zone-text p');
 
     let currentTool = '';
@@ -22,8 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         workspace.style.display = 'block';
         
         // 重置文件上传区域
-        dropText.textContent = '拖放文件到这里，或者点击选择文件';
-        fileInput.value = '';
+        resetForm();
         
         // 根据工具类型设置界面
         switch (currentTool) {
@@ -45,53 +46,73 @@ document.addEventListener('DOMContentLoaded', () => {
         resetForm();
     });
 
-    // 文件选择处理
-    fileInput.addEventListener('change', (e) => {
-        // 阻止事件冒泡
-        e.stopPropagation();
-        
-        if (e.target.files.length) {
-            handleFileSelect(e.target.files[0]);
-        }
-    });
+    // 文件上传相关事件处理
+    function initFileUpload() {
+        // 阻止默认拖放行为
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, preventDefaults, false);
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
 
-    // 拖放处理
-    dropZone.addEventListener('dragover', (e) => {
+        // 拖放状态处理
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        // 处理文件拖放
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        // 处理文件选择
+        fileInput.addEventListener('change', handleFileSelect, false);
+
+        // 点击上传区域
+        const uploadTrigger = dropZone.querySelector('.drop-zone-text');
+        uploadTrigger.addEventListener('click', () => fileInput.click(), false);
+    }
+
+    function preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
+    }
+
+    function highlight(e) {
         dropZone.classList.add('active');
-    });
+    }
 
-    dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+    function unhighlight(e) {
         dropZone.classList.remove('active');
-    });
+    }
 
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.remove('active');
-        
-        const files = e.dataTransfer.files;
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
         if (files.length) {
-            fileInput.files = files;
-            handleFileSelect(files[0]);
+            handleFiles(files);
         }
-    });
+    }
 
-    // 点击上传区域
-    dropZone.addEventListener('click', (e) => {
-        // 阻止事件冒泡
-        e.stopPropagation();
-        
-        // 如果点击的是 input 元素，不需要再次触发点击
-        if (e.target !== fileInput) {
-            fileInput.click();
+    function handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length) {
+            handleFiles(files);
         }
-    });
+    }
 
-    // 表单提交
+    function handleFiles(files) {
+        const file = files[0];
+        if (file.type !== 'application/pdf') {
+            showError('请选择 PDF 文件');
+            resetForm();
+            return;
+        }
+        dropText.textContent = `已选择: ${file.name}`;
+    }
+
+    // 表单提交处理
     toolForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -116,17 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 文件处理函数
-    function handleFileSelect(file) {
-        if (file.type !== 'application/pdf') {
-            showError('请选择 PDF 文件');
-            fileInput.value = '';
-            dropText.textContent = '拖放文件到这里，或者点击选择文件';
-            return;
-        }
-        dropText.textContent = `已选择: ${file.name}`;
-    }
-
     async function handlePdfToWord(file) {
         const formData = new FormData();
         formData.append('file', file);
@@ -147,7 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showSuccess('转换成功！');
     }
 
-    // 辅助函数
     function showError(message) {
         messageDiv.textContent = `错误：${message}`;
         messageDiv.className = 'error';
@@ -166,7 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dropText.textContent = '拖放文件到这里，或者点击选择文件';
     }
 
-    // 下载函数
     function download(blob, filename) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -178,4 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.URL.revokeObjectURL(url);
         a.remove();
     }
+
+    // 初始化文件上传
+    initFileUpload();
 }); 
