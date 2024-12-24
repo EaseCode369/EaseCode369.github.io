@@ -11,6 +11,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentTool = '';
 
+    // 处理PDF拆分
+    async function handlePdfSplit(file) {
+        try {
+            const startPage = document.getElementById('startPage').value;
+            const endPage = document.getElementById('endPage').value;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('start_page', startPage);
+            formData.append('end_page', endPage);
+
+            const response = await fetch('http://localhost:5000/split/pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '拆分失败');
+            }
+
+            const blob = await response.blob();
+            const filename = file.name.replace('.pdf', `_p${startPage}-${endPage}.pdf`);
+            download(blob, filename);
+            showSuccess('拆分成功！');
+        } catch (error) {
+            console.error('拆分错误:', error);
+            showError(error.message);
+        }
+    }
+
+    // 处理PDF转Word
+    async function handlePdfToWord(file) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('http://localhost:5000/convert/pdf2word', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '转换失败');
+            }
+
+            const blob = await response.blob();
+            download(blob, file.name.replace('.pdf', '.docx'));
+            showSuccess('转换成功！');
+        } catch (error) {
+            console.error('转换错误:', error);
+            showError(error.message);
+        }
+    }
+
     // 工具卡片点击事件
     toolsGrid.addEventListener('click', (e) => {
         const toolCard = e.target.closest('.tool-card');
@@ -90,62 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropText = dropZone.querySelector('.drop-zone-text p');
         dropText.textContent = `已选择: ${file.name}`;
         fileInput.files = files;
-    }
-
-    // 处理PDF转Word
-    async function handlePdfToWord(file) {
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await fetch('http://localhost:5000/convert/pdf2word', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || '转换失败');
-            }
-
-            const blob = await response.blob();
-            download(blob, file.name.replace('.pdf', '.docx'));
-            showSuccess('转换成功！');
-        } catch (error) {
-            console.error('转换错误:', error);
-            showError(error.message);
-        }
-    }
-
-    // 处理PDF拆分
-    async function handlePdfSplit(file) {
-        try {
-            const startPage = document.getElementById('startPage').value;
-            const endPage = document.getElementById('endPage').value;
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('start_page', startPage);
-            formData.append('end_page', endPage);
-
-            const response = await fetch('http://localhost:5000/split/pdf', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || '拆分失败');
-            }
-
-            const blob = await response.blob();
-            const filename = file.name.replace('.pdf', `_p${startPage}-${endPage}.pdf`);
-            download(blob, filename);
-            showSuccess('拆分成功！');
-        } catch (error) {
-            console.error('拆分错误:', error);
-            showError(error.message);
-        }
     }
 
     // 显示错误信息
